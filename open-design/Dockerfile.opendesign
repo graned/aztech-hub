@@ -1,0 +1,32 @@
+FROM ghcr.io/nexu-io/od:0.18.1@sha256:3438df7aa505ecac6e869327ab735ba8245e2a27905f6ab105435ef02b2f9bed
+
+USER root
+
+RUN apk add --no-cache \
+        bash \
+        curl \
+        git \
+        libc6-compat \
+        libgcc \
+        libstdc++ \
+        ripgrep \
+    && npm install --global --no-audit --no-fund \
+        opencode-ai@1.18.18 \
+        @openai/codex@0.147.0 \
+        @anthropic-ai/claude-code@2.1.233 \
+    && npm cache clean --force \
+    && mkdir -p /home/open-design \
+    && chown open-design:open-design /home/open-design
+
+ENV HOME=/home/open-design \
+    USE_BUILTIN_RIPGREP=0
+
+USER open-design
+
+RUN test "$(id -u)" != 0 \
+    && command -v opencode \
+    && command -v codex \
+    && command -v claude \
+    && test "$(opencode --version)" = "1.18.18" \
+    && test "$(codex --version)" = "codex-cli 0.147.0" \
+    && test "$(claude --version)" = "2.1.233 (Claude Code)"

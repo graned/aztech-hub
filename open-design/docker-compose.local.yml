@@ -1,0 +1,91 @@
+name: aztech-open-design-local
+
+services:
+  configure-open-design:
+    build:
+      context: .
+      dockerfile: Dockerfile.opendesign
+    image: aztech-open-design:0.18.1-agents
+    restart: "no"
+    environment:
+      OD_DATA_DIR: /app/.od
+    entrypoint: ["node", "/opt/open-design/configure-open-design.mjs"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./scripts/configure-open-design.mjs:/opt/open-design/configure-open-design.mjs:ro
+      - open-design-state:/app/.od
+    networks:
+      - app
+
+  open-design:
+    build:
+      context: .
+      dockerfile: Dockerfile.opendesign
+    image: aztech-open-design:0.18.1-agents
+    restart: unless-stopped
+    depends_on:
+      configure-open-design:
+        condition: service_completed_successfully
+    environment:
+      OD_BIND_HOST: 0.0.0.0
+      OD_PORT: "7456"
+      OD_WEB_PORT: "7456"
+      OD_API_TOKEN: ""
+      OD_DISABLE_API_AUTH: "1"
+      OD_ALLOWED_ORIGINS: https://design.localhost
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:7456/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - open-design-state:/app/.od
+      - open-design-home:/home/open-design
+    networks:
+      - app
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    environment:
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?BASIC_AUTH_USER is required}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?BASIC_AUTH_HASH is required}
+      SESSION_TOKEN: ${SESSION_TOKEN:?SESSION_TOKEN is required}
+    depends_on:
+      open-design:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:443:443/udp"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - app
+
+networks:
+  app:
+    name: aztech-open-design-local
+    driver: bridge
+
+volumes:
+  open-design-state:
+    name: aztech-open-design-local-state
+  open-design-home:
+    name: aztech-open-design-local-home
+  caddy-data:
+    name: aztech-open-design-local-caddy-data
+  caddy-config:
+    name: aztech-open-design-local-caddy-config
