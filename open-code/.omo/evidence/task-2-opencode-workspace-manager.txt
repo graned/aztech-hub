@@ -1,0 +1,66 @@
+# Task 2 — Docker networking (opencode-workspace-manager)
+
+Verified: 2026-08-19
+
+## Files created
+- Dockerfile (multi-stage: base/deps/dev/builder/runner, standalone output, git+openssh-client+curl in runtime)
+- Dockerfile.opencode (ghcr.io/anomalyco/opencode:latest + git/openssh-client/curl via apk; Alpine 3.24.1, runs as root, entrypoint `opencode`)
+- docker-compose.local.yml (4 services: app, mongodb, opencode, caddy)
+- docker-compose.prod.yml (4 services; requires APP_URL and auth vars)
+- Caddyfile.local (http://coding.localhost -> app:3000)
+- Caddyfile.prod ({$APP_URL}, basic_auth, reverse_proxy app:3000)
+- .env.example, .gitignore, .dockerignore
+- public/.gitkeep (standalone copy target)
+- next.config.ts: added `output: "standalone"`
+
+## Acceptance criteria
+1. `docker compose -f docker-compose.local.yml --env-file .env.example config` -> exit 0
+2. `docker compose -f docker-compose.prod.yml --env-file .env.example config` -> exit 0
+3. Config output has ONLY Caddy host ports:
+   - local: single published port `80` (127.0.0.1:80->80)
+   - prod: `80`, `443`, `443` (udp)
+   - app/mongodb/opencode expose NO host ports
+4. Shared workspace volume: `workspace-data` mounted at `/workspaces` on BOTH app and opencode
+5. Dedicated network: all four services on `aztech-opencode-workspace-manager-local` bridge
+
+## Failure path (prod vars absent)
+```
+$ docker compose -f docker-compose.prod.yml config
+exit: 1
+error while interpolating services.app.environment.APP_URL: required variable APP_URL is missing a value: APP_URL is required
+```
+
+## Live stack verification
+```
+$ docker compose -f docker-compose.local.yml up -d --build
+mongodb  Healthy
+opencode Healthy
+app      Healthy (via /api/health)
+caddy    Up
+
+$ curl -si http://coding.localhost/api/health
+HTTP/1.1 200 OK
+Content-Type: application/json
+Via: 1.1 Caddy
+{"status":"ok"}
+
+$ docker ps (ports)
+caddy     -> 127.0.0.1:80->80/tcp (only published port)
+app       -> 3000/tcp   (exposed, not published)
+opencode  -> (no ports)
+mongodb   -> 27017/tcp  (exposed, not published)
+
+$ docker exec app curl -u localopencode:localopencode http://opencode:4096/doc
+HTTP 200 (OpenAPI: title=opencode, version=1.0.0)
+anon request -> HTTP 401 (auth enforced)
+
+Workspace mount confirmation:
+app      -> ...-local-workspaces:/workspaces
+opencode -> ...-local-workspaces:/workspaces
+
+Hot reload sanity: touch src/app/globals.css while running -> app still serves 200
+```
+
+## Cleanup
+Stack left RUNNING for subsequent task QA (health, gateway, mongo).
+Kill later with: docker compose -f docker-compose.local.yml down

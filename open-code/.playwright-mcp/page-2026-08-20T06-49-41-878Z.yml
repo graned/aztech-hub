@@ -1,0 +1,9 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e3]:
+    - banner [ref=f2e4]:
+      - generic [ref=f2e5]:
+        - button "Home" [ref=f2e7]
+        - button "New session" [ref=f2e11]
+    - main [ref=f2e14]
+  - generic:
+    - region "Notifications alt+T"

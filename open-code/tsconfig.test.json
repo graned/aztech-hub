@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@opencode-ai/sdk": ["./node_modules/@opencode-ai/sdk/dist/index.js"]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+- generic [active] [ref=f3e1]:
+  - main [ref=f3e2]:
+    - generic [ref=f3e3]:
+      - heading "Workspaces" [level=1] [ref=f3e4]
+      - generic [ref=f3e5]: localhost:3000
+    - region [ref=f3e6]:
+      - heading "Create workspace" [level=2] [ref=f3e7]
+      - generic [ref=f3e9]:
+        - generic [ref=f3e10]: Search GitHub repositories
+        - searchbox "Search GitHub repositories" [ref=f3e11]
+        - button "Search" [disabled] [ref=f3e12]
+    - region [ref=f3e13]:
+      - heading "Existing workspaces" [level=2] [ref=f3e14]
+      - paragraph [ref=f3e15]: Loading workspaces…
+  - button "Open Next.js Dev Tools" [ref=f3e21] [cursor=pointer]

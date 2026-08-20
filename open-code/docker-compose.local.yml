@@ -1,0 +1,116 @@
+name: aztech-opencode-workspace-manager-local
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    image: aztech-opencode-workspace-manager:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      APP_URL: http://workspace.localhost
+      OPENCODE_WEB_URL: http://coding.localhost
+      MONGODB_URI: ${MONGODB_URI:-mongodb://opencode:opencode@mongodb:27017/opencode_workspace_manager?authSource=admin}
+      OPENCODE_URL: http://opencode:4096
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:-localopencode}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-localopencode}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      WORKSPACE_ROOT: /workspaces
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+      - workspace-data:/workspaces
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      opencode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - app
+
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-opencode}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-opencode}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app
+
+  opencode:
+    build:
+      context: .
+      dockerfile: Dockerfile.opencode
+    image: aztech-opencode-workspace-manager:opencode-local
+    restart: unless-stopped
+    environment:
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:-localopencode}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-localopencode}
+    command: ["web", "--hostname", "0.0.0.0", "--port", "4096"]
+    volumes:
+      - opencode-data:/root/.local/share/opencode
+      - opencode-config:/root/.config/opencode
+      - workspace-data:/workspaces
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u \"$$OPENCODE_SERVER_USERNAME:$$OPENCODE_SERVER_PASSWORD\" http://127.0.0.1:4096/doc || curl -fsS http://127.0.0.1:4096/doc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - app
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+      opencode:
+        condition: service_healthy
+    environment:
+      OPENCODE_BASIC_AUTH: ${OPENCODE_BASIC_AUTH:-bG9jYWxvcGVuY29kZTpsb2NhbG9wZW5jb2Rl}
+    ports:
+      - "127.0.0.1:80:80"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - app
+
+networks:
+  app:
+    name: aztech-opencode-workspace-manager-local
+    driver: bridge
+
+volumes:
+  app-node-modules:
+    name: aztech-opencode-workspace-manager-local-node-modules
+  workspace-data:
+    name: aztech-opencode-workspace-manager-local-workspaces
+  mongo-data:
+    name: aztech-opencode-workspace-manager-local-mongo
+  opencode-data:
+    name: aztech-opencode-workspace-manager-local-opencode-data
+  opencode-config:
+    name: aztech-opencode-workspace-manager-local-opencode-config
+  caddy-data:
+    name: aztech-opencode-workspace-manager-local-caddy-data
+  caddy-config:
+    name: aztech-opencode-workspace-manager-local-caddy-config

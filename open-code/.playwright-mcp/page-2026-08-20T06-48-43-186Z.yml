@@ -1,0 +1,13 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - heading "Workspaces" [level=1] [ref=e4]
+    - generic [ref=e5]: localhost:3000
+  - region [ref=e6]:
+    - heading "Create workspace" [level=2] [ref=e7]
+    - generic [ref=e9]:
+      - generic [ref=e10]: Search GitHub repositories
+      - searchbox "Search GitHub repositories" [ref=e11]
+      - button "Search" [disabled] [ref=e12]
+  - region [ref=e13]:
+    - heading "Existing workspaces" [level=2] [ref=e14]
+    - paragraph [ref=e15]: Loading workspaces…

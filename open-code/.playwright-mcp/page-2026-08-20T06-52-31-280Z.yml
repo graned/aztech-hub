@@ -1,0 +1,29 @@
+- generic [ref=f4e1]:
+  - main [ref=f4e2]:
+    - navigation "Breadcrumb" [ref=f4e13]:
+      - link "Workspaces" [ref=f4e14] [cursor=pointer]:
+        - /url: /
+      - text: /graned/sentinel
+    - generic [ref=f4e15]:
+      - generic [ref=f4e16]:
+        - heading "graned/sentinel" [level=1] [ref=f4e17]
+        - paragraph [ref=f4e18]: branch main · last session active
+      - generic [ref=f4e19]:
+        - link "Resume last session →" [ref=f4e20] [cursor=pointer]:
+          - /url: /workspaces/ws-182d80a0a9e3/sessions/ses_fe2217e60ffe1JtIbebUkxjA9b
+        - link "Open in OpenCode ↗" [active] [ref=f4e21] [cursor=pointer]:
+          - /url: /api/workspaces/ws-182d80a0a9e3/open?sessionId=ses_fe2217e60ffe1JtIbebUkxjA9b
+        - button "New session" [ref=f4e22]
+    - region [ref=f4e23]:
+      - heading "Sessions" [level=2] [ref=f4e24]
+      - list [ref=f4e25]:
+        - listitem [ref=f4e26]:
+          - link [ref=f4e27] [cursor=pointer]:
+            - /url: /workspaces/ws-182d80a0a9e3/sessions/ses_fe2217e60ffe1JtIbebUkxjA9b
+            - paragraph [ref=f4e28]: ses_fe2217e60ffe1JtIbebUkxjA9b
+            - paragraph [ref=f4e29]: Updated 8/20/2026, 8:31:56 AM
+          - generic [ref=f4e30]: Last active
+          - link "Open ↗" [ref=f4e31] [cursor=pointer]:
+            - /url: /api/workspaces/ws-182d80a0a9e3/open?sessionId=ses_fe2217e60ffe1JtIbebUkxjA9b
+  - button "Open Next.js Dev Tools" [ref=f4e9] [cursor=pointer]
+  - alert [ref=f4e32]

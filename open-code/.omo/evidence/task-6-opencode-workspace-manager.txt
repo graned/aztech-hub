@@ -1,0 +1,31 @@
+# Task 6 — API routes + workspace/session navigation UI (opencode-workspace-manager)
+
+Verified: 2026-08-19
+
+## Deliverables
+- src/lib/api/http.ts — response helpers (ok, apiError, validationError, notFound, conflict, upstream, mapServiceError, badParam) returning typed NextResponse JSON
+- src/lib/api/validation.ts — zod schemas for workspaceId (`^ws-[a-f0-9]{12}$`), sessionId, owner/repo/branch/query; parseBody/parseSearchParams with structured 400 + issues
+- src/lib/api/services.ts — ApiServices (workspaceRepo, sessionRepo, github, git, opencode) + getApiServices/createApiServices factories
+- src/lib/api/handlers.ts — 9 route handlers; ALL malformed-ID/param paths return structured 400 via badParam (activateSession, createSession, getWorkspace, listBranches, listMessages, listSessions, createWorkspace); real 404 for missing workspace/session/mapping; 409 for clone-conflict/duplicate; 503 for upstream/config
+- src/lib/api/handlers.test.ts — 24 route tests with fakes (FakeWorkspaceRepo, FakeSessionRepo, FakeGit, FakeGithub, FakeOpenCode)
+- src/lib/api/client-types.ts — client-safe ClientWorkspace / ClientSessionMapping / ClientGitHubRepository / ClientGitHubBranch / ClientMessage (no server-only dependency on client)
+- src/components/workspaces-dashboard.tsx — dashboard: workspace list, GitHub repo search → branch select → create workspace
+- src/components/workspace-view.tsx — workspace page: session list, create session, last-active badge, Resume last session → restoring stored lastSessionID
+- src/components/session-view.tsx — session page: activates session (POST activate) and lists messages
+- Pages: `/` renders dashboard; `/workspaces/[id]`; `/workspaces/[id]/sessions/[sessionId]`
+- Routes (all force-dynamic, no client acess to OpenCode): /api/workspaces (GET/POST), /api/workspaces/[id] (GET), /api/workspaces/[id]/sessions (GET/POST), /api/workspaces/[id]/sessions/[sessionId]/activate (POST), /api/workspaces/[id]/sessions/[sessionId]/messages (GET), /api/github/search (GET), /api/github/[owner]/[repo]/branches (GET), /api/health
+
+## Acceptance criteria
+1. Route tests reject malformed IDs/payloads — handlers.test.ts: malformed workspaceId (10 tests), malformed sessionId, bad owner/repo params → 400 with `bad-request` code + issues; malformed JSON body → 400; structured 409 (clone conflict, duplicate workspace), 404 (missing workspace/session/mapping), 503 (GitHub config error)
+2. `pnpm test` → 81 pass / 0 fail (24 api/handlers + 19 gateway + 15 mongodb + 7 github + 16 git)
+3. UI keyboard-accessible + mobile: all interactive elements are real <Link>/<button>, focus-visible outlines, aria-current on active session, role=alert on errors, responsive sm: breakpoints, touch-friendly spacing
+4. Switching workspace/session updates URL/state: Link navigation to /workspaces/[id] and /workspaces/[id]/sessions/[sessionId]; session-view activates on load; workspace view shows last-active and "Resume last session" restoring stored lastSessionID
+5. `pnpm typecheck` → exit 0 (typedRoutes regenerated via `next typegen` once pages exist)
+6. `pnpm lint` → exit 0 (removed dead errorMessage helper, unused imports; eslint argsIgnorePattern ^_ for tests)
+7. `pnpm build` → Next standalone build succeeds; all 10 app routes listed (○ /, ƒ /api/*, ƒ /workspaces/[id], ƒ /workspaces/[id]/sessions/[sessionId])
+
+## Notes
+- typedRoutes: true in next.config requires generated route types; `next typegen` run after creating /workspaces/[id] and session pages resolves RouteImpl errors.
+- Tailwind v4 classes mapped to @theme inline tokens (`--color-error`, `--color-panel`, `--color-background`, etc.); inert classes text-status-error / bg-surface-secondary / hover:bg-surface-primary replaced.
+- Browser fetches only Next.js routes; OpenCode/git/github reachable only through services on the server.
+- No client component imports server-only modules; client-types.ts is the client boundary.

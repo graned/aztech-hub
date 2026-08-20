@@ -1,0 +1,22 @@
+# Task 5 — GitHub adapter + safe Git workspace manager (opencode-workspace-manager)
+
+Verified: 2026-08-19
+
+## Deliverables
+- src/lib/github/types.ts — typed `GitHubRepository` (incl. owner/name), `GitHubBranch`, `GitHubError` with discriminated kinds (`configuration`, `authentication`, `rate-limit`, `not-found`, `invalid-identifier`, `upstream`)
+- src/lib/github/config.ts — `getGithubConfig` reading `GITHUB_TOKEN` / `GITHUB_API_URL` (empty strings coerced to undefined)
+- src/lib/github/client.ts — `GitHubClient` with injected `fetchImpl` (HTTP-free testing): `searchRepositories`, `listBranches`, `getRepository` (returns null on 404, rethrows others); validators `isGithubOwner` / `isGithubRepo` / `isGithubBranch`; Bearer auth + `X-GitHub-Api-Version: 2022-11-28`; status→kind mapping (401/403→authentication, 404→not-found, 429→rate-limit, else upstream); missing token → `configuration`
+- src/lib/git/types.ts — typed `GitError` with lifecycle kinds (`invalid-args`, `invalid-identifier`, `outside-root`, `target-exists`, `clone-failed`, `not-git-repo`, `command-failed`), `GitRunResult`, `GitRunner`, `WorkspaceStatus` (branch/clean/ahead/behind)
+- src/lib/git/runner.ts — `createNodeGitRunner` using `node:child_process` spawn with an argv array (never a shell string), 30s timeout → SIGKILL, streams stdout/stderr
+- src/lib/git/workspace-manager.ts — `WorkspaceManager`: `resolvePath` (owner/repo validated then contained under root), `clone` (exact argv `clone --branch <b> --depth 1 <sshUrl> <target>`, `target-exists` when the directory already exists, `clone-failed` on non-zero), `status` (rev-parse branch, status --short clean, rev-list ahead/behind), hard `assertContained` rejecting `..` escapes with `outside-root`; `getWorkspaceRoot` defaults to `/workspaces`
+
+## Acceptance criteria
+1. `pnpm test` -> 57 pass / 0 fail (19 gateway + 15 mongodb + 7 github client + 16 git workspace-manager: repo search/owner/name/sshUrl mapping + auth header, branch listing, invalid-identifier short-circuit with zero API calls, missing-token `configuration`, 403→authentication/429→rate-limit, 404→null vs 500→upstream, malformed JSON→upstream; workspace path resolution, traversal `../../outside` rejected with no process spawned, exact clone argv array asserted, invalid branch short-circuit, clone-failed on non-zero, target-exists on existing dir, status clean/dirty + ahead/behind, not-git-repo)
+2. `pnpm typecheck` -> exit 0
+3. `pnpm lint` -> exit 0
+4. `pnpm build` -> Next standalone build succeeds (routes /, /_not-found, /api/health)
+
+## Notes
+- QA ran against an explicit HTTP-free `fetchImpl` fake (GitHub) and a recording `GitRunner` fake (git); failure path `../../outside` is rejected before any process spawn (asserted `runner.calls.length === 0`).
+- Git binary is invoked only via argv — no shell interpolation anywhere; SSH clone URLs are used exclusively; no private keys are copied into code/images.
+- Branch validation rejects `..`, `@{`, spaces, newlines, leading `-`, trailing `.`, and `//` per git-check-ref-format constraints.

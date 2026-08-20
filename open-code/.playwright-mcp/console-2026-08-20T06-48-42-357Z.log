@@ -1,0 +1,9 @@
+[     654ms] [ERROR] Access to script at 'http://unpkg.com/react-grab/dist/index.global.js' from origin 'http://workspace.localhost' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://workspace.localhost/:0
+[     654ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://unpkg.com/react-grab/dist/index.global.js:0
+[     655ms] [ERROR] Event @ http://workspace.localhost/_next/static/chunks/0nz0_next_dist_client_0z2sipp._.js:78
+[     688ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://workspace.localhost/_next/static/chunks/0nz0_next_dist_10vyyb1._.js:776
+[     741ms] [ERROR] Access to script at 'http://unpkg.com/react-scan/dist/auto.global.js' from origin 'http://workspace.localhost' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://workspace.localhost/:0
+[     741ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://unpkg.com/react-scan/dist/auto.global.js:0
+[     757ms] [LOG] [HMR] connected @ http://workspace.localhost/_next/static/chunks/0nz0_next_dist_10vyyb1._.js:776
+[     820ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://workspace.localhost/favicon.ico:0
+[    4039ms] [WARNING] The resource http://unpkg.com/react-scan/dist/auto.global.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://workspace.localhost/:0

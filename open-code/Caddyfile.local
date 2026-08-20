@@ -1,0 +1,13 @@
+http://workspace.localhost {
+	handle {
+		reverse_proxy app:3000
+	}
+}
+
+http://coding.localhost {
+	handle {
+		reverse_proxy opencode:4096 {
+			header_up Authorization "Basic {$OPENCODE_BASIC_AUTH}"
+		}
+	}
+}

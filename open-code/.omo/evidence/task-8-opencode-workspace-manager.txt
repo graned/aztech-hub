@@ -1,0 +1,102 @@
+Task 8 evidence - diagnostics, production hardening, README, local E2E
+Date: 2026-08-20 (UTC)
+
+1. Settings diagnostics (new)
+- src/lib/api/diagnostics.ts: getDiagnostics(deps) probes mongodb/opencode/github/git.
+  States: ok | unreachable | not-configured. DiagnosticsDeps injectable for tests.
+- src/app/api/health/route.ts: now returns getDiagnostics() JSON, force-dynamic.
+- src/components/settings-status.tsx + src/app/settings/page.tsx: render service states.
+- src/lib/api/diagnostics.test.ts: 8 tests (ok/unreachable/not-configured per service,
+  missing workspace root, throwing probe, empty opencode version); registered in
+  package.json test script.
+
+2. Production hardening
+- docker-compose.prod.yml: caddy service now receives APP_URL, BASIC_AUTH_USERNAME,
+  BASIC_AUTH_PASSWORD_HASH (Caddyfile.prod expands {$...} from process env; previously
+  unset, caddy would fail to adapt). BASIC_AUTH_PASSWORD_HASH uses :? so config fails
+  closed without it.
+  Verified: config without BASIC_AUTH_PASSWORD_HASH -> exit 1; with all vars -> exit 0,
+  caddy.environment populated.
+- docker compose -f docker-compose.prod.yml config: only published ports are
+  80/tcp, 443/tcp, 443/udp, all on caddy. app/mongodb/opencode publish nothing.
+
+3. README.md (new)
+Documents: architecture (browser->Next.js only, no OpenCode DNS/port), local commands,
+coding.localhost DNS note, production deployment + required env table + caddy
+hash-password, SSH runtime mounts (read-only key or SSH_AUTH_SOCK; never baked into
+images), volumes + backup guidance (mongodump, volume archives, caddy TLS data),
+troubleshooting via /api/health + /settings, dev-without-docker commands.
+
+4. Local Compose E2E (docker-compose.local.yml, Caddy on 127.0.0.1:80)
+Note: app container had a stale app-node-modules volume predating the mongodb
+dependency (stuck 4h41m pnpm install holding state, 0 CPU). Repaired by removing the
+app container + volume and `up -d --build app`; healthy on first healthcheck.
+- GET /api/health via Host: coding.localhost ->
+  {"generatedAt":...,"mongodb":{"state":"ok"},"opencode":{"state":"ok"},
+   "github":{"state":"not-configured"},"git":{"state":"ok","root":"/workspaces"}}
+- GET /settings -> 200; GET / -> 200; GET /api/workspaces -> {"workspaces":[]}
+
+5. Failure scenario (plan QA): docker compose stop opencode
+- /api/health -> "opencode":{"state":"unreachable"} (honest failure state)
+- leak check: grep for "opencode:4096" / "http://opencode" in response -> empty
+- /settings still renders 200
+- docker compose start opencode -> health back to "opencode":{"state":"ok"} within 5s
+
+6. Full verification gate (host)
+- pnpm typecheck: pass
+- pnpm lint: pass
+- pnpm test: 107/107 pass, 22 suites, 0 fail
+- pnpm build: pass; routes include /api/health, /api/events, /settings, prompt,
+  messages, activate, github search/branches, workspaces CRUD
+
+Acceptance criteria status:
+- README documents local+production commands, DNS, no OpenCode DNS, SSH mounts,
+  volumes, backups, troubleshooting: YES
+- local stack starts: YES (healthy)
+- curl http://coding.localhost/api/health reports service states: YES (via Host header
+  against 127.0.0.1:80; coding.localhost resolves on this host)
+- production config publishes only 80/443: YES
+
+7. GitHub SSH automation
+- scripts/setup-github-ssh.sh: authentication-gated and rerunnable. With gh already
+  authenticated as the user's account, it generated a dedicated ed25519 key outside
+  the repository, registered only the public key, created known_hosts from GitHub's
+  published API host keys, and wrote only mount paths to ignored .env.ssh.
+- scripts/check-github-ssh.sh: account preflight passed; `./scripts/check-github-ssh.sh
+  octocat/Hello-World` passed the repository read check.
+- docker-compose.ssh.yml mounts the key and known_hosts read-only at runtime. The app
+  image contains /root/.ssh but no key files; the running container exposed 600 private
+  key and 644 known_hosts mounts.
+- Local stack started with the SSH override; in-container `git ls-remote
+  git@github.com:octocat/Hello-World.git HEAD` succeeded.
+- Setup rerun detected the existing public key and did not register a duplicate.
+- bash -n, Compose config, typecheck, lint, 107 tests, and build all pass.
+
+8. Hybrid official OpenCode Web routing
+- Manager domain: workspace.localhost locally and workspace.aztech-hub.com in
+  production. Official OpenCode Web: coding.localhost locally and
+  coding.aztech-hub.com in production.
+- docker-compose local/prod now runs `opencode web --hostname 0.0.0.0 --port 4096`.
+- Caddy routes the two root domains separately; only Caddy publishes ports.
+- `curl http://workspace.localhost/` -> 200 and `/api/health` reports MongoDB,
+  OpenCode, GitHub, and Git states.
+- `curl http://coding.localhost/` -> 200 with `<title>OpenCode</title>` and official
+  `/assets/` scripts.
+- Existing workspace deep link returned 303 from the manager to
+  `http://coding.localhost/<base64-directory>/session/<sessionID>`.
+- Playwright loaded the official coding root and direct session route; the session
+  page exposed OpenCode's Home, New session, review toggle, prompt textbox, and Send
+  controls.
+- Production Compose config renders with only published ports 80/tcp, 443/tcp, and
+  443/udp.
+
+9. OpenCode session ownership and manager reconciliation
+- `listSessions` now queries OpenCode for the workspace directory, upserts titles and
+  timestamps into MongoDB, removes stale mappings, and updates the workspace's latest
+  session pointer without storing messages or tool output.
+- New session flow creates through OpenCode first, stores the returned mapping, and
+  returns a server-generated coding-domain URL.
+- Existing custom session URLs redirect through the manager to official OpenCode.
+- Playwright clicked New session from the manager, landed at the official coding UI
+  session route, and a subsequent manager reconciliation showed the new session title
+  and Mongo mapping.

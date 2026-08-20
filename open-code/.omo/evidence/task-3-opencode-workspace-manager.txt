@@ -1,0 +1,40 @@
+# Task 3 — OpenCode gateway (opencode-workspace-manager)
+
+Verified: 2026-08-19
+
+## Deliverables
+- src/lib/opencode/types.ts — OpenCode DTOs + `OpenCodePart` discriminated union + `OpenCodeError` (kinds: unreachable, unauthorized, not-found, bad-request, invalid-response, upstream)
+- src/lib/opencode/config.ts — `getServerConfig` / `getBasicAuthHeader` (exactOptionalPropertyTypes-safe env access)
+- src/lib/opencode/client.ts — cached `createOpencodeClient` with conditional Basic-auth headers
+- src/lib/opencode/mapper.ts — `mapSession/Project/Part/Parts/Message/Messages/PromptResult/SessionStatus/GlobalEvent`, `toTextPartInput`
+- src/lib/opencode/gateway.ts — server-only facade: health, listProjects, getCurrentProject, getPath, getVcs, listSessions, createSession, getSession, deleteSession, getSessionStatus, listMessages, prompt, promptAsync, abort, subscribeEvents (AbortSignal), subscribeGlobalEvents; `runRequest` maps SDK SyntaxError -> invalid-response and transport errors -> unreachable; `requireData`, `unwrapError`, `asError`
+- src/lib/opencode/gateway.test.ts — HTTP fixture server suite (19 tests)
+- tsconfig.test.json — tsx-only sdk paths alias (keeps main tsconfig clean for tsc/Next)
+- package.json — test script wired to run gateway tests via tsx + react-server condition
+
+## SDK contract notes (verified against @opencode-ai/sdk 1.18.18 + pinned server)
+- SSE subscribe returns `{ stream: AsyncGenerator }`; SDK stream reconnects forever unless the provided AbortSignal aborts -> gateway threads `signal` through and tests abort before breaking.
+- `Part` tool state is `toolState.status`; step-start carries no `reason`; retry error text is `part.error.data.message`.
+- Global event envelope is `{ directory, payload: Event }`; session events carry `properties.info.id`.
+
+## Build / resolution fix
+- tsx runtime import of `@opencode-ai/sdk` from nested .ts throws `ERR_PACKAGE_PATH_NOT_EXPORTED` (SDK exports map has `import`/`types` only; tsx CJS fallback does not apply `import` condition). Fixed by a dedicated `tsconfig.test.json` `paths` alias to `./node_modules/@opencode-ai/sdk/dist/index.js` used only by tsx at runtime; main `tsconfig.json` is left clean so `tsc`/Next resolve real declarations.
+
+## Acceptance criteria
+1. `pnpm test` -> 19 pass / 0 fail (health ok, 401->unauthorized, projects, path, vcs, sessions CRUD, status, messages text+tool parts, prompt echo, promptAsync (204), abort, subscribeEvents, subscribeGlobalEvents, 404->not-found, empty body->invalid-response)
+2. `pnpm typecheck` -> exit 0
+3. `pnpm lint` -> exit 0 (clear warnings)
+4. `pnpm build` -> Next standalone build succeeds
+5. No `any` in gateway/mapper/client (strict + noUncheckedIndexedAccess + noPropertyAccessFromIndexSignature + exactOptionalPropertyTypes)
+
+## Failure paths verified
+- Upstream 401 -> `OpenCodeError{kind:'unauthorized', status:401}`
+- Upstream 404 -> `OpenCodeError{kind:'not-found'}`
+- Malformed/empty JSON body -> SDK SyntaxError caught by `runRequest` -> `OpenCodeError{kind:'invalid-response'}`
+- Transport/SSE errors -> `OpenCodeError{kind:'unreachable'}`
+
+## Results
+```
+# tests 19  # suites 1  # pass 19  # fail 0  # cancelled 0
+build: Route (app) / /_not-found /api/health — compiled successfully
+```

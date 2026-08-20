@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  --surface-primary: #f7f8fa;
+  --surface-secondary: #ffffff;
+  --surface-elevated: #ffffff;
+  --text-primary: #17212b;
+  --text-secondary: #5d6874;
+  --text-tertiary: #87919b;
+  --border-default: #dce1e6;
+  --border-subtle: #e9edf0;
+  --accent-primary: #2b5f8a;
+  --accent-hover: #214a6c;
+  --status-success: #287a55;
+  --status-warning: #9a641e;
+  --status-error: #a84242;
+  --status-info: #2b5f8a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-primary: #111418;
+    --surface-secondary: #191e24;
+    --surface-elevated: #20262d;
+    --text-primary: #f3f5f7;
+    --text-secondary: #aab4bf;
+    --text-tertiary: #7d8995;
+    --border-default: #303943;
+    --border-subtle: #242b33;
+    --accent-primary: #8db9df;
+    --accent-hover: #b1d2ec;
+    --status-success: #71c79d;
+    --status-warning: #e2b36a;
+    --status-error: #e28a8a;
+    --status-info: #8db9df;
+  }
+}
+
+@theme inline {
+  --color-background: var(--surface-primary);
+  --color-foreground: var(--text-primary);
+  --color-panel: var(--surface-secondary);
+  --color-elevated: var(--surface-elevated);
+  --color-muted: var(--text-secondary);
+  --color-tertiary: var(--text-tertiary);
+  --color-border: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-error: var(--status-error);
+  --color-info: var(--status-info);
+}
+
+* {
+  border-color: var(--border-default);
+}
+
+body {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+::selection {
+  background: var(--accent-primary);
+  color: var(--surface-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

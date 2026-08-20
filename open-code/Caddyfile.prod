@@ -1,0 +1,25 @@
+{$WORKSPACE_URL} {
+	encode gzip
+
+	basic_auth {
+		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+	}
+
+	handle {
+		reverse_proxy app:3000
+	}
+}
+
+{$CODING_URL} {
+	encode gzip
+
+	basic_auth {
+		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+	}
+
+	handle {
+		reverse_proxy opencode:4096 {
+			header_up Authorization "Basic {$OPENCODE_BASIC_AUTH}"
+		}
+	}
+}

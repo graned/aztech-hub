@@ -1,0 +1,14 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e3]:
+    - banner [ref=f1e4]:
+      - generic [ref=f1e5]:
+        - button "Home" [ref=f1e7]
+        - link [ref=f1e14]:
+          - generic [ref=f1e15]:
+            - link "Project description request" [ref=f1e16]:
+              - /url: /server/aHR0cDovL2NvZGluZy5sb2NhbGhvc3Q/session/ses_fe2217e60ffe1JtIbebUkxjA9b
+            - button [ref=f1e21]
+        - button "New session" [ref=f1e25]
+    - main [ref=f1e28]
+  - generic:
+    - region "Notifications alt+T"

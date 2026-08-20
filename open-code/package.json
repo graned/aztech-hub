@@ -1,0 +1,40 @@
+{
+  "name": "opencode-workspace-manager",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "TSX_TSCONFIG_PATH=./tsconfig.test.json node --conditions=react-server --import tsx --test src/lib/opencode/gateway.test.ts src/lib/opencode/web-url.test.ts src/lib/mongodb/mongodb.test.ts src/lib/github/client.test.ts src/lib/git/workspace-manager.test.ts src/lib/api/handlers.test.ts src/lib/api/eventRelay.test.ts src/lib/api/diagnostics.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.18.18",
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "mongodb": "^7.5.0",
+    "next": "^16.2.9",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.2.9",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "tsx": "^4.23.12",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@10.15.1"
+}

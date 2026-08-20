@@ -1,0 +1,24 @@
+# Task 4 — MongoDB metadata persistence (opencode-workspace-manager)
+
+Verified: 2026-08-19
+
+## Deliverables
+- src/lib/mongodb/types.ts — `WorkspaceRecord`, `SessionMappingRecord` (metadata only: id/workspaceID/directory/repository/branch/timestamps/lastSessionID — no conversation fields), `WorkspaceConflictError` (kind `workspace-conflict`), `DuplicateKeyError`, deterministic `workspaceIdFor(repository, branch, directory)` -> `ws-<hash>`
+- src/lib/mongodb/client.ts — Mongo singleton (`getMongoUri` default `mongodb://localhost:27017/opencode_workspace_manager`, cached `getMongoClient`, cached-promise `getDb`), `pingDb(Commandable)` refactored to a structural `{ command() }` interface (real `Db` satisfies it) so health ping is testable HTTP-free, `pingMongo`, `disconnectMongo`
+- src/lib/mongodb/store.ts — `MongoStore<T>` minimal collection interface + `isDuplicateKeyError` (code 11000) + `mongoStoreFromDb<T extends Document>` adapter over the real driver
+- src/lib/mongodb/workspaceRepo.ts — `WorkspaceRepository`: ensureIndexes (unique repo/branch/directory, updatedAt), create (typed conflict on duplicate), list (updatedAt desc), get, getByDirectory, updateLastSession, delete
+- src/lib/mongodb/sessionRepo.ts — `SessionRepository`: ensureIndexes (unique id, workspaceID+updatedAt), upsert (insert-or-update keyed by session id), get, listByWorkspace, latestByWorkspace, delete
+- src/lib/mongodb/repositories.ts — `getWorkspaceRepository()` / `getSessionRepository()` factories on the singleton `db`
+- src/lib/mongodb/mongodb.test.ts — HTTP-free in-memory `MemoryStore` (unique-index enforcement that throws a 11000-shaped error) + 15 tests
+- package.json — test script now runs gateway + mongodb suites
+
+## Acceptance criteria
+1. `pnpm test` -> 34 pass / 0 fail (19 gateway + 15 mongodb: workspace create/list/get/getByDirectory/delete, duplicate -> typed `WorkspaceConflictError`, same repo different directory allowed, last-session update bumps updatedAt, session upsert dedupe keyed by id, latestByWorkspace, health ping true/false, duplicate-key classification)
+2. `pnpm typecheck` -> exit 0
+3. `pnpm lint` -> exit 0
+4. `pnpm build` -> Next standalone build succeeds (routes /, /_not-found, /api/health)
+5. Documents contain no conversation fields — only workspace/session mappings persist (OpenCode remains source of truth)
+
+## Notes
+- QA ran against an explicit HTTP-free repository fake (plan's allowed option B); a live mongo is available in the local stack (`mongodb://opencode:opencode@mongodb:27017/opencode_workspace_manager?authSource=admin`) for optional integration.
+- `insertOne` adapter casts to `OptionalUnlessRequiredId<T>` (driver requires `_id` optional); `filter` casts to `Filter<T>`/`UpdateFilter<T>` at the adapter seam only.

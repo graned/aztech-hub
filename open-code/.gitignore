@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts.bak
+
+# Environment and secrets
+.env
+.env.local
+.env.prod
+.env.ssh
+.env.*.local
+!.env.example
+.ssh/
+*.pem
+
+# Runtime SSH setup
+.runtime/
+
+# Tooling caches
+.codegraph/
+.omo/run-continuation/
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Playwright / test artifacts
+test-results/
+playwright-report/
+blob-report/

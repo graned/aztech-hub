@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "active_work_id": "opencode-workspace-manager",
+  "works": {
+    "opencode-workspace-manager": {
+      "work_id": "opencode-workspace-manager",
+      "active_plan": ".omo/plans/opencode-workspace-manager.md",
+      "plan_name": "opencode-workspace-manager",
+      "session_ids": ["codex:ses_fe7408254ffeNnKwJKc0b9aM9f"],
+      "status": "active",
+      "worktree_path": null
+    }
+  }
+}

@@ -1,0 +1,69 @@
+Task 7 evidence — Add coding interface and OpenCode event relay
+==================================================================
+Plan: .omo/plans/opencode-workspace-manager.md (checklist item 7)
+Date: 2026-08-19
+
+What was done
+-------------
+- Added the coding interface (prompt submission UI + live conversation) on
+  the session page, and a Next.js SSE relay that tunnels OpenCode session
+  events to the browser with upstream cancellation and event filtering.
+- Browser code only calls Next.js routes; it never references the OpenCode
+  server directly.
+
+Files touched (all green under existing conventions, strict TS/typedRoutes)
+--------------------------------------------------------------------------
+- src/lib/api/validation.ts            promptSchema (text: trimmed, 1..100000)
+- src/lib/api/services.ts              OpenCodeService gained promptAsync and
+                                       subscribeEvents; wired impls added
+- src/lib/api/eventRelay.ts (new)      parseEventEnvelope, filterSessionEvents,
+                                       encodeEventFrame, createEventStreamResponse
+                                       (SSE Response, closes on AbortSignal)
+- src/lib/api/client-types.ts          ClientPart union, ClientEventEnvelope,
+                                       ClientStepState
+- src/lib/api/handlers.ts              submitPrompt + streamSessionEvents handlers
+- src/app/api/events/route.ts (new)    GET /api/events?sessionId=... (SSE)
+- src/app/api/workspaces/[id]/sessions/[sessionId]/prompt/route.ts (new)  POST
+- src/components/conversation.tsx (new) prompt form, message rendering with tool/
+                                       activity/step states, EventSource consumer,
+                                       debounced message refresh
+- src/components/session-view.tsx      REMOVED (replaced by usage of conversation)
+- src/app/workspaces/[id]/sessions/[sessionId]/page.tsx  now renders Conversation
+- src/lib/api/handlers.test.ts         +8 tests (prompt route + events route)
+- src/lib/api/eventRelay.test.ts (new) +8 tests (parse/filter/frame/stream/abort)
+- package.json                         test script now includes eventRelay.test.ts
+
+Acceptance criteria and how each was met
+----------------------------------------
+1) "prompt route returns typed success/error"
+   submitPrompt returns { ok: true, sessionID } on success; structured 400
+   (bad-request with issues) for missing/empty/over-long text or malformed
+   IDs; 404 for missing session; wrapped upstream error (502) for failures.
+   Verified by tests in handlers.test.ts "prompt route" and live build route
+   /api/workspaces/[id]/sessions/[sessionId]/prompt.
+
+2) "SSE route emits validated event envelopes and closes on AbortSignal"
+   streamSessionEvents subscribes to OpenCode events for the session's
+   directory, runs them through filterSessionEvents (zod-validated, filtered
+   to the requested sessionID), and streams data-framed JSON via
+   createEventStreamResponse, which listens to request.signal "abort" with a
+   once listener, closes the controller, and removes the listener in finally.
+   Verified by eventRelay.test.ts "createEventStreamResponse" (frames emitted,
+   header content-type text/event-stream, abort closes after 1 frame) and
+   handlers.test.ts "events route" (session filtering + 400/404).
+
+3) "browser source contains no OPENCODE_URL or opencode:4096"
+   conversation.tsx (the only consumer) uses fetch()/EventSource against
+   /api/... routes only. grep over src/components finds no OPENCODE_URL /
+   opencode:4096. OpenCode credentials base lives only behind services.
+
+Verification results
+--------------------
+pnpm typecheck  : pass (0 errors)
+pnpm lint       : pass (0 errors, incl. react-hooks/set-state-in-effect fix:
+                   initial load driven through debounced scheduleRefresh)
+pnpm test       : 99 tests, 99 pass (was 81; +8 handlers, +8 eventRelay, -0)
+pnpm build      : pass; route list includes
+                   ƒ /api/events
+                   ƒ /api/workspaces/[id]/sessions/[sessionId]/prompt
+                   ƒ /workspaces/[id]/sessions/[sessionId]
