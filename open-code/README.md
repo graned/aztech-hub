@@ -94,6 +94,8 @@ sudo bash scripts/setup-droplet.sh --project-dir /opt/aztech-opencode-workspace-
 
 The deployment stream includes `.env.prod` and the GitHub private key only over SSH. Neither is included in the source archive or Docker image; the key is mounted read-only into the app container from `runtime-ssh/`.
 
+When `open-design` is deployed on the same Droplet, use the root `scripts/deploy-droplet.sh` unified deployment instead of this project-level production script. Both project-level production Compose files include standalone Caddy services and cannot publish ports 80/443 simultaneously.
+
 ## SSH access for private repositories
 
 Cloning uses SSH URLs (`git@github.com:owner/repo.git`). The recommended setup uses a dedicated SSH key attached to your GitHub account. The private key stays on the Docker host and is mounted read-only at runtime; it is never copied into an image or committed.

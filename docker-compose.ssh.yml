@@ -1,0 +1,5 @@
+services:
+  workspace-manager:
+    volumes:
+      - ${OPENCODE_SSH_KEY_PATH:?Run open-code/scripts/setup-github-ssh.sh first}:/root/.ssh/id_ed25519:ro
+      - ${OPENCODE_KNOWN_HOSTS_PATH:?Run open-code/scripts/setup-github-ssh.sh first}:/root/.ssh/known_hosts:ro

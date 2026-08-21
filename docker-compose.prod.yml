@@ -1,0 +1,157 @@
+name: aztech-hub-prod
+
+services:
+  workspace-manager:
+    build:
+      context: ./open-code
+      dockerfile: Dockerfile
+      target: runner
+    image: aztech-opencode-workspace-manager:prod-unified
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_URL: ${WORKSPACE_URL:?WORKSPACE_URL is required}
+      OPENCODE_WEB_URL: ${CODING_URL:?CODING_URL is required}
+      MONGODB_URI: ${MONGODB_URI:?MONGODB_URI is required}
+      OPENCODE_URL: http://opencode:4096
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:?OPENCODE_SERVER_USERNAME is required}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?OPENCODE_SERVER_PASSWORD is required}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      WORKSPACE_ROOT: /workspaces
+    volumes:
+      - workspace-data:/workspaces
+    depends_on:
+      mongodb: { condition: service_healthy }
+      opencode: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks: [code-internal, edge]
+
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?MONGO_INITDB_ROOT_USERNAME is required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?MONGO_INITDB_ROOT_PASSWORD is required}
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks: [code-internal]
+
+  opencode:
+    build:
+      context: ./open-code
+      dockerfile: Dockerfile.opencode
+    image: aztech-opencode-workspace-manager:opencode-prod-unified
+    restart: unless-stopped
+    environment:
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:?OPENCODE_SERVER_USERNAME is required}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?OPENCODE_SERVER_PASSWORD is required}
+    command: ["web", "--hostname", "0.0.0.0", "--port", "4096"]
+    volumes:
+      - opencode-data:/root/.local/share/opencode
+      - opencode-config:/root/.config/opencode
+      - workspace-data:/workspaces
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u \"$$OPENCODE_SERVER_USERNAME:$$OPENCODE_SERVER_PASSWORD\" http://127.0.0.1:4096/doc || curl -fsS http://127.0.0.1:4096/doc"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks: [code-internal, edge]
+
+  open-design-configure:
+    build:
+      context: ./open-design
+      dockerfile: Dockerfile.opendesign
+    image: aztech-open-design:0.18.1-agents-unified
+    restart: "no"
+    environment: { OD_DATA_DIR: /app/.od }
+    entrypoint: ["node", "/opt/open-design/configure-open-design.mjs"]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./open-design/scripts/configure-open-design.mjs:/opt/open-design/configure-open-design.mjs:ro
+      - open-design-state:/app/.od
+    networks: [design-internal]
+
+  open-design:
+    build:
+      context: ./open-design
+      dockerfile: Dockerfile.opendesign
+    image: aztech-open-design:0.18.1-agents-unified
+    restart: unless-stopped
+    depends_on:
+      open-design-configure: { condition: service_completed_successfully }
+    environment:
+      OD_BIND_HOST: 0.0.0.0
+      OD_PORT: "7456"
+      OD_WEB_PORT: "7456"
+      OD_API_TOKEN: ""
+      OD_DISABLE_API_AUTH: "1"
+      OD_ALLOWED_ORIGINS: ${DESIGN_URL:?DESIGN_URL is required}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:7456/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - open-design-state:/app/.od
+      - open-design-home:/home/open-design
+    networks: [design-internal, edge]
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    environment:
+      DESIGN_URL: ${DESIGN_URL:?DESIGN_URL is required}
+      WORKSPACE_URL: ${WORKSPACE_URL:?WORKSPACE_URL is required}
+      CODING_URL: ${CODING_URL:?CODING_URL is required}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:?BASIC_AUTH_USER is required}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?BASIC_AUTH_HASH is required}
+      SESSION_TOKEN: ${SESSION_TOKEN:?SESSION_TOKEN is required}
+      BASIC_AUTH_USERNAME: ${BASIC_AUTH_USERNAME:-admin}
+      BASIC_AUTH_PASSWORD_HASH: ${BASIC_AUTH_PASSWORD_HASH:?BASIC_AUTH_PASSWORD_HASH is required}
+      OPENCODE_BASIC_AUTH: ${OPENCODE_BASIC_AUTH:?OPENCODE_BASIC_AUTH is required}
+    depends_on:
+      workspace-manager: { condition: service_healthy }
+      opencode: { condition: service_healthy }
+      open-design: { condition: service_healthy }
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+
+networks:
+  code-internal: { name: aztech-hub-prod-code, driver: bridge }
+  design-internal: { name: aztech-hub-prod-design, driver: bridge }
+  edge: { name: aztech-hub-prod-edge, driver: bridge }
+
+volumes:
+  workspace-data: { name: aztech-opencode-workspace-manager-prod-workspaces }
+  mongo-data: { name: aztech-opencode-workspace-manager-prod-mongo }
+  opencode-data: { name: aztech-opencode-workspace-manager-prod-opencode-data }
+  opencode-config: { name: aztech-opencode-workspace-manager-prod-opencode-config }
+  open-design-state: { name: aztech-open-design-prod-state }
+  open-design-home: { name: aztech-open-design-prod-home }
+  caddy-data: { name: aztech-hub-prod-caddy-data }
+  caddy-config: { name: aztech-hub-prod-caddy-config }

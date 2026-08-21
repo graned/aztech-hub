@@ -1,0 +1,44 @@
+{$DESIGN_URL} {
+	route {
+		@missingSession not header Cookie *od_session={$SESSION_TOKEN}*
+		basic_auth @missingSession {
+			{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+		}
+		header @missingSession Set-Cookie "od_session={$SESSION_TOKEN}; Path=/; Max-Age=604800; Secure; HttpOnly; SameSite=Strict"
+		handle /api/integrations/vela/status {
+			header Content-Type application/json
+			respond `{}` 200
+		}
+		handle /api/amr/models {
+			header Content-Type application/json
+			respond `{"source":"preset","models":[],"refreshing":false}` 200
+		}
+		handle /api/integrations/vela/login {
+			header Content-Type application/json
+			respond `{"error":"Open Design Cloud is disabled in this self-hosted deployment; use the configured local agent."}` 409
+		}
+		handle {
+			reverse_proxy open-design:7456 {
+				header_up -Authorization
+			}
+		}
+	}
+}
+
+{$WORKSPACE_URL} {
+	encode gzip
+	basic_auth {
+		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+	}
+	reverse_proxy workspace-manager:3000
+}
+
+{$CODING_URL} {
+	encode gzip
+	basic_auth {
+		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+	}
+	reverse_proxy opencode:4096 {
+		header_up Authorization "Basic {$OPENCODE_BASIC_AUTH}"
+	}
+}

@@ -182,6 +182,8 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml down
 
 Caddy obtains and renews the public certificate automatically when DNS and inbound connectivity are correct.
 
+When the Workspace Manager is deployed on the same Droplet, use the root `scripts/deploy-droplet.sh` unified deployment instead of this project-level production script. Both project-level production Compose files include standalone Caddy services and cannot publish ports 80/443 simultaneously.
+
 ## Provider access and persistence
 
 Provider keys supplied in the env file are available to the agents. Prefer scoped keys with spending limits. As an alternative, enter the container and use each provider CLI's interactive login; never put login secrets on command lines:

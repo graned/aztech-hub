@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.*.example
+.ssh/
+runtime-ssh/
+node_modules/
+.next/
+coverage/
+.codegraph/
+.omo/run-continuation/
+.playwright-mcp/
+test-results/
+playwright-report/

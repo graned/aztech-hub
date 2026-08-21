@@ -1,0 +1,163 @@
+name: aztech-hub-local
+
+services:
+  workspace-manager:
+    build:
+      context: ./open-code
+      dockerfile: Dockerfile
+      target: dev
+    image: aztech-opencode-workspace-manager:local-unified
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      APP_URL: ${WORKSPACE_URL:-http://workspace.localhost}
+      OPENCODE_WEB_URL: ${CODING_URL:-http://coding.localhost}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://opencode:opencode@mongodb:27017/opencode_workspace_manager?authSource=admin}
+      OPENCODE_URL: http://opencode:4096
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:-localopencode}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-localopencode}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      WORKSPACE_ROOT: /workspaces
+    volumes:
+      - ./open-code:/app
+      - workspace-manager-node-modules:/app/node_modules
+      - workspace-data:/workspaces
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      opencode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [code-internal, edge]
+
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-opencode}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-opencode}
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [code-internal]
+
+  opencode:
+    build:
+      context: ./open-code
+      dockerfile: Dockerfile.opencode
+    image: aztech-opencode-workspace-manager:opencode-local-unified
+    restart: unless-stopped
+    environment:
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:-localopencode}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-localopencode}
+    command: ["web", "--hostname", "0.0.0.0", "--port", "4096"]
+    volumes:
+      - opencode-data:/root/.local/share/opencode
+      - opencode-config:/root/.config/opencode
+      - workspace-data:/workspaces
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u \"$$OPENCODE_SERVER_USERNAME:$$OPENCODE_SERVER_PASSWORD\" http://127.0.0.1:4096/doc || curl -fsS http://127.0.0.1:4096/doc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [code-internal, edge]
+
+  open-design-configure:
+    build:
+      context: ./open-design
+      dockerfile: Dockerfile.opendesign
+    image: aztech-open-design:0.18.1-agents-unified
+    restart: "no"
+    environment: { OD_DATA_DIR: /app/.od }
+    entrypoint: ["node", "/opt/open-design/configure-open-design.mjs"]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./open-design/scripts/configure-open-design.mjs:/opt/open-design/configure-open-design.mjs:ro
+      - open-design-state:/app/.od
+    networks: [design-internal]
+
+  open-design:
+    build:
+      context: ./open-design
+      dockerfile: Dockerfile.opendesign
+    image: aztech-open-design:0.18.1-agents-unified
+    restart: unless-stopped
+    depends_on:
+      open-design-configure:
+        condition: service_completed_successfully
+    environment:
+      OD_BIND_HOST: 0.0.0.0
+      OD_PORT: "7456"
+      OD_WEB_PORT: "7456"
+      OD_API_TOKEN: ""
+      OD_DISABLE_API_AUTH: "1"
+      OD_ALLOWED_ORIGINS: ${DESIGN_URL:-https://design.localhost}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:7456/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - open-design-state:/app/.od
+      - open-design-home:/home/open-design
+    networks: [design-internal, edge]
+
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    restart: unless-stopped
+    environment:
+      DESIGN_URL: ${DESIGN_URL:-https://design.localhost}
+      WORKSPACE_URL: ${WORKSPACE_URL:-http://workspace.localhost}
+      CODING_URL: ${CODING_URL:-http://coding.localhost}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER:-admin}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?BASIC_AUTH_HASH is required}
+      SESSION_TOKEN: ${SESSION_TOKEN:?SESSION_TOKEN is required}
+      BASIC_AUTH_USERNAME: ${BASIC_AUTH_USERNAME:-admin}
+      BASIC_AUTH_PASSWORD_HASH: ${BASIC_AUTH_PASSWORD_HASH:?BASIC_AUTH_PASSWORD_HASH is required}
+      OPENCODE_BASIC_AUTH: ${OPENCODE_BASIC_AUTH:?OPENCODE_BASIC_AUTH is required}
+    depends_on:
+      workspace-manager: { condition: service_healthy }
+      opencode: { condition: service_healthy }
+      open-design: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:443:443/udp"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+
+networks:
+  code-internal: { name: aztech-hub-local-code, driver: bridge }
+  design-internal: { name: aztech-hub-local-design, driver: bridge }
+  edge: { name: aztech-hub-local-edge, driver: bridge }
+
+volumes:
+  workspace-manager-node-modules: { name: aztech-hub-local-workspace-manager-node-modules }
+  workspace-data: { name: aztech-opencode-workspace-manager-local-workspaces }
+  mongo-data: { name: aztech-opencode-workspace-manager-local-mongo }
+  opencode-data: { name: aztech-opencode-workspace-manager-local-opencode-data }
+  opencode-config: { name: aztech-opencode-workspace-manager-local-opencode-config }
+  open-design-state: { name: aztech-open-design-local-state }
+  open-design-home: { name: aztech-open-design-local-home }
+  caddy-data: { name: aztech-hub-local-caddy-data }
+  caddy-config: { name: aztech-hub-local-caddy-config }
