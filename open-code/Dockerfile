@@ -18,6 +18,17 @@ FROM deps AS builder
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
+RUN set -eux; \
+    helper_source=; \
+    for candidate in /app/node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers; do \
+      if [ -d "$candidate" ]; then helper_source=$candidate; break; fi; \
+    done; \
+    test -n "$helper_source"; \
+    for next_dependencies in /app/.next/standalone/node_modules/.pnpm/next@*/node_modules; do \
+      test -d "$next_dependencies" || continue; \
+      mkdir -p "$next_dependencies/@swc/helpers"; \
+      cp -a "$helper_source/." "$next_dependencies/@swc/helpers/"; \
+    done
 
 FROM base AS runner
 ENV NODE_ENV=production

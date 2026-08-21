@@ -100,3 +100,28 @@ Acceptance criteria status:
 - Playwright clicked New session from the manager, landed at the official coding UI
   session route, and a subsequent manager reconciliation showed the new session title
   and Mongo mapping.
+
+10. DigitalOcean deployment automation
+- scripts/setup-droplet.sh: idempotent remote Ubuntu/Debian x86_64 setup. Installs
+  Docker CE, Buildx, and the Compose plugin after verifying Docker's official GPG
+  fingerprint; validates Compose/Caddy; starts the production stack; waits for app and
+  OpenCode health plus Caddy running state with a bounded timeout.
+- scripts/deploy-droplet.sh: strict-host-key SSH wrapper modeled after open-design.
+  Uploads the source bundle without Git metadata, env files, or runtime keys; streams
+  .env.prod and the GitHub private key over SSH; installs them root-only on the Droplet;
+  writes .env.ssh paths; invokes setup-droplet.sh. Runtime SSH material is excluded
+  from Git and Docker build contexts.
+- bash -n and both script help commands pass.
+- Local Caddy validation passes; typecheck, lint, 111 tests, and build pass.
+
+11. Droplet Next production-runtime fix
+- Root cause reproduced locally: `.next/standalone` contained only
+  `@swc/helpers/cjs`, while the builder dependency contained the required ESM helper;
+  the failing Droplet path matched the missing standalone path exactly.
+- Dockerfile builder now copies the complete `@swc/helpers` package into each traced
+  Next dependency directory before assembling the runner image.
+- Red check failed before the fix; patched production image check passes:
+  `scripts/check-standalone-next-runtime.sh aztech-opencode-workspace-manager:prod`.
+- The patched production image contains
+  `/app/node_modules/.pnpm/next@.../node_modules/@swc/helpers/esm/_interop_require_default.js`
+  and `node server.js` served HTTP 200 in an isolated container.
