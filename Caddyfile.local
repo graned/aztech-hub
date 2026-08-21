@@ -27,10 +27,16 @@ https://design.localhost {
 }
 
 http://workspace.localhost {
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
 	reverse_proxy workspace-manager:3000
 }
 
 http://coding.localhost {
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
 	reverse_proxy opencode:4096 {
 		header_up Authorization "Basic {$OPENCODE_BASIC_AUTH}"
 	}

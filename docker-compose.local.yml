@@ -129,8 +129,6 @@ services:
       BASIC_AUTH_USER: ${BASIC_AUTH_USER:-admin}
       BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?BASIC_AUTH_HASH is required}
       SESSION_TOKEN: ${SESSION_TOKEN:?SESSION_TOKEN is required}
-      BASIC_AUTH_USERNAME: ${BASIC_AUTH_USERNAME:-admin}
-      BASIC_AUTH_PASSWORD_HASH: ${BASIC_AUTH_PASSWORD_HASH:?BASIC_AUTH_PASSWORD_HASH is required}
       OPENCODE_BASIC_AUTH: ${OPENCODE_BASIC_AUTH:?OPENCODE_BASIC_AUTH is required}
     depends_on:
       workspace-manager: { condition: service_healthy }

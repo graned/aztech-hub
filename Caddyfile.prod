@@ -28,7 +28,7 @@
 {$WORKSPACE_URL} {
 	encode gzip
 	basic_auth {
-		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
 	}
 	reverse_proxy workspace-manager:3000
 }
@@ -36,7 +36,7 @@
 {$CODING_URL} {
 	encode gzip
 	basic_auth {
-		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
 	}
 	reverse_proxy opencode:4096 {
 		header_up Authorization "Basic {$OPENCODE_BASIC_AUTH}"

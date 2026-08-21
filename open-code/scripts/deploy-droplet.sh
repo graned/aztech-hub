@@ -61,7 +61,7 @@ command -v tar >/dev/null 2>&1 || fail "tar is required"
 [[ -f $github_key && ! -L $github_key ]] || fail "missing GitHub private key: $github_key"
 [[ -f $known_hosts && ! -L $known_hosts ]] || fail "missing GitHub known_hosts: $known_hosts"
 
-for required_key in WORKSPACE_URL CODING_URL MONGODB_URI MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD OPENCODE_SERVER_USERNAME OPENCODE_SERVER_PASSWORD OPENCODE_BASIC_AUTH BASIC_AUTH_PASSWORD_HASH; do
+  for required_key in WORKSPACE_URL CODING_URL MONGODB_URI MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD OPENCODE_SERVER_USERNAME OPENCODE_SERVER_PASSWORD OPENCODE_BASIC_AUTH BASIC_AUTH_USER BASIC_AUTH_HASH; do
   grep -Eq "^[[:space:]]*${required_key}=[^[:space:]]" "$project_dir/.env.prod" \
     || fail "$required_key must be set in .env.prod"
 done

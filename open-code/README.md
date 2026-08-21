@@ -49,8 +49,8 @@ The app container bind-mounts the source tree for hot reload; dependencies live 
    | `MONGO_INITDB_ROOT_USERNAME` / `MONGO_INITDB_ROOT_PASSWORD` | Mongo bootstrap credentials |
    | `OPENCODE_SERVER_USERNAME` / `OPENCODE_SERVER_PASSWORD` | OpenCode server basic auth (app-to-OpenCode) |
    | `OPENCODE_BASIC_AUTH` | Base64 of `username:password` for Caddy-to-OpenCode auth; generate with `printf '%s' 'username:password' \| base64 -w0` |
-   | `BASIC_AUTH_USERNAME` | Browser basic-auth username (default `admin`) |
-   | `BASIC_AUTH_PASSWORD_HASH` | Bcrypt hash: `caddy hash-password --plaintext 'your-password'` |
+   | `BASIC_AUTH_USER` | Shared browser Basic Auth username for the public Caddy sites |
+   | `BASIC_AUTH_HASH` | Shared bcrypt hash: `caddy hash-password --plaintext 'your-password'`; store it single-quoted because it contains `$` |
    | `GITHUB_TOKEN` | Optional; empty disables GitHub browsing |
 
 3. Start the stack:
@@ -67,7 +67,7 @@ The repository includes an SSH deployment wrapper modeled after the `open-design
 
 Before the first deployment:
 
-1. Create `.env.prod` locally from `.env.example`. Set `WORKSPACE_URL=https://workspace.aztech-hub.com`, `CODING_URL=https://coding.aztech-hub.com`, all required Mongo/OpenCode credentials, `BASIC_AUTH_PASSWORD_HASH`, and `OPENCODE_BASIC_AUTH`.
+1. Create `.env.prod` locally from `.env.example`. Set `WORKSPACE_URL=https://workspace.aztech-hub.com`, `CODING_URL=https://coding.aztech-hub.com`, all required Mongo/OpenCode credentials, the shared `BASIC_AUTH_USER`/`BASIC_AUTH_HASH`, and `OPENCODE_BASIC_AUTH`.
 2. Point both DNS records at the Droplet. Permit inbound TCP `22`, `80`, and `443`, plus UDP `443`; do not publish Docker service ports.
 3. Verify the Droplet SSH host fingerprint in the DigitalOcean console, then connect once so it is in your local `known_hosts`.
 4. Ensure the local GitHub SSH setup is complete: `./scripts/check-github-ssh.sh owner/repository`.

@@ -2,7 +2,7 @@
 	encode gzip
 
 	basic_auth {
-		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
 	}
 
 	handle {
@@ -14,7 +14,7 @@
 	encode gzip
 
 	basic_auth {
-		{$BASIC_AUTH_USERNAME} {$BASIC_AUTH_PASSWORD_HASH}
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
 	}
 
 	handle {
