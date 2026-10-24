@@ -1,5 +1,4 @@
-FROM ghcr.io/nexu-io/od:0.18.1@sha256:3438df7aa505ecac6e869327ab735ba8245e2a27905f6ab105435ef02b2f9bed
-
+FROM ghcr.io/nexu-io/od:0.26.1@sha256:5fc38ad9dd67dceb89a332c52ded43745be1071816c6683607f7032200693643
 USER root
 
 RUN apk add --no-cache \
