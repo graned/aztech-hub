@@ -55,13 +55,16 @@ services:
     environment:
       OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:?OPENCODE_SERVER_USERNAME is required}
       OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD:?OPENCODE_SERVER_PASSWORD is required}
-    command: ["web", "--hostname", "0.0.0.0", "--port", "4096"]
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    command: ["serve", "--hostname", "0.0.0.0", "--port", "4096"]
     volumes:
       - opencode-data:/root/.local/share/opencode
       - opencode-config:/root/.config/opencode
       - workspace-data:/workspaces
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -u \"$$OPENCODE_SERVER_USERNAME:$$OPENCODE_SERVER_PASSWORD\" http://127.0.0.1:4096/doc || curl -fsS http://127.0.0.1:4096/doc"]
+      test:
+        - CMD-SHELL
+        - 'curl -fsS -u "$$OPENCODE_SERVER_USERNAME:$$OPENCODE_SERVER_PASSWORD" http://127.0.0.1:4096/global/health >/dev/null'
       interval: 30s
       timeout: 10s
       retries: 5
